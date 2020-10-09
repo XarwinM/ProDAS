@@ -6,6 +6,11 @@ import random
 import pdb
 
 class AbstractSimple:
+    """ 
+        Class that allows to sample images with varying number of objects;
+        Sampling from in-distribuion and out-of-distribution is possible
+
+    """
     def __init__(self):
 
         self.colors_background = np.array([ [0.55, 0.75, 0.95],
@@ -113,18 +118,20 @@ class AbstractSimple:
     def generate_objects(self, 
             number=2, 
             obj_text=0, 
-            texture_range=[0,1,2], 
-            object_type_range=[0,2], 
-            rotation_range=(0,360)):
+            obj_type=0, 
+            rotation_range=(0,360),
+            scale_range=(0.2,1)):
         """ 
-            Generate Meta-Data for objects for one image (in distribution) 
+            Generate Meta-Data for objects for one image (in distribution);
+            Sampling of positions as in self.generate_abstract_position(...)
 
             number: Number of objects to generate
-            texture_range: Range of possible values of object textures
-            object_type_range: Range of possible objectes; 0: Triangle, 1: Box, 2: Circle, 3: Eclipse
-            r
+            obj_text: Texture of objects; range: [0,1,2,3]
+            obj_type: Type of objects; 0: Triangle, 1: Box, 2: Circle, 3: Eclipse (the same for all objects)
+            rotation_range: Range of rotations; objects rotation is uniformly sampled from this range (for each object separately)
+            scale_range: Scaling range; the scale of each object is uniformly sampled from this range (for each object separately)
 
-            return: Meta-data of objects (positions, object texture, scale, objecte type and rotation
+            return: Meta-data of objects (positions, object texture, scale, objecte type and rotation)
         """ 
 
         positions = self.generate_abstract_position(number=number)
@@ -132,14 +139,12 @@ class AbstractSimple:
         for p in positions:
             objects.append({'position':p}) 
 
-        obj_type =  random.choice(object_type_range)#np.random.randint(4) 
         for obj in objects:
-            #obj['obj_text'] = random.choice(texture_range)#np.random.randint(4)
             obj['obj_text'] = obj_text 
-            obj['scale'] = self.scale_max*np.random.rand(1)[0]
+            obj['scale'] = self.scale_max * ((scale_range[1]-scale_range[0])*np.random.rand(1)[0]+scale_range[0])
 
             ### Additional eclipse parameter
-            obj['scale_eclipse'] = self.scale_max*np.random.rand(1)[0]
+            obj['scale_eclipse'] = self.scale_max * ((scale_range[1]-scale_range[0])*np.random.rand(1)[0]+scale_range[0])
 
             ### Ensures that in case obj_type=Eclipse, really a eclipse is generated
             ### Check wheter 0.2 is enough??
@@ -147,7 +152,6 @@ class AbstractSimple:
                 obj['scale_eclipse'] = self.scale_max*np.random.rand(1)[0]
 
             obj['type'] = obj_type
-            #obj['rotation'] = np.random.randint(360)
             obj['rotation'] = np.random.randint(rotation_range[0], rotation_range[1])
         return objects
 
@@ -157,8 +161,7 @@ class AbstractSimple:
             objects=[]):
         """ Generates Image from meta-information about object in images
 
-            background_id: Defines background texture and ranges from 0 to 3
-            obj_text: Defines texture of all objects and ranges from 0 to 3
+            background_id: Defines background texture and is in [0,1,2,3] 
             objects: list of objects; each element defines one object via a dictionary that contains values of rotation, position, scale and object texture
 
             output: Image of objects; Numpy array of shape (self.img_size, self.img_size, 3) 
@@ -185,35 +188,40 @@ class AbstractSimple:
         return img
 
     def sample_custom(self, 
-            number_range=[0,1,2], 
-            background_range=[0,1,2], 
-            texture_range = [0,1,2],
-            object_type_range=[0,2]):
+            background_id=0,
+            number=1,
+            obj_text=0,
+            obj_type=0,
+            rotation_range=(0,360),
+            scale_range=(0.2,1)):
         """ Allows cusomized sampling due to different parameters and ranges 
         """
 
-        background_id = random.choice(background_range) 
-        obj_text = random.choice(texture_range)
-        number = random.choice(number_range)
-
-
-        objects = self.generate_objects(number=number, obj_text=obj_text, object_type_range=object_type_range, texture_range=texture_range) 
+        objects = self.generate_objects(number=number, obj_text=obj_text, obj_type=obj_type, rotation_range=rotation_range, scale_range=scale_range)
 
         return self.generate_instance(background_id=background_id, objects=objects)
 
     def sample_id(self):
-        """ Sample in distribution images 
+        """ Sample one in distribution images;
+            Pre-defined distribution on latent factors that generate
             
         """
         background_id = np.random.randint(3)
-        obj_text = np.random.randint(3)
         number = np.random.randint(3)+1
-        object_type_range = [0,2]
-        texture_range = [0,1,2]
+        obj_text = np.random.randint(3)
+        obj_text = np.random.randint(3)
+        obj_type = random.choice([0,2])
+        rotation_range = (0,360)
+        scale_range = (0.2, 1)
 
-        objects = self.generate_objects(number=number, obj_text=obj_text, object_type_range=object_type_range, texture_range=texture_range) 
+        out = self.sample_custom(background_id=background_id, 
+                number=number, 
+                obj_text=obj_text, 
+                obj_type=obj_type, 
+                rotation_range=rotation_range, 
+                scale_range=scale_range)
 
-        return self.generate_instance(background_id=background_id, objects=objects)
+        return out
 
     def sample_od(self, 
             level_0=False, 
@@ -221,9 +229,9 @@ class AbstractSimple:
             level_2=False):
         """ Suggestion for sampling out-of-distribution (OOD) images; level_ specifies which type of OOD should be generated
 
-            level_0: Level of texture (background and object texture)
-            level_1: Level of object form 
-            level_2: Level of multiple objects (counting) 
+            level_0: Texture sampled out of distr. if True, otherwise in distr. (background and object texture)
+            level_1: Object type sampled out of distr. if True; otherwise in distr. 
+            level_2: Number of objects out of distr if True; otherwise in distr. (counting) 
 
             output: generated image due to specifications (levels)
         """
@@ -231,24 +239,25 @@ class AbstractSimple:
         #### Level of texture
         if level_0 == True:
             background_id = 3 
-            obj_text = 3 
             texture_range =[3]
         else:
             background_id = np.random.randint(3)
-            obj_text = np.random.randint(3)
             texture_range = [0,1,2]
+
+        obj_text=random.choice(texture_range)
 
         #### Level of multiple objects (counting) 
         if level_2 == True:
             number = 4 
         else:
-            number = np.random.randint(3)+1
+            number = np.random.randint(2)+1
 
-        #### Level of one object 
+        #### Level of one object; type of object
         if level_1 == True:
-            objects = self.generate_objects(number=number, obj_text=obj_text, texture_range=texture_range, object_type_range=[0,2]) 
+            obj_type = random.choice([1,3]) 
         else:
-            objects = self.generate_objects(number=number, obj_text=obj_text,  texture_range=texture_range, object_type_range=[1,3])
+            obj_type = random.choice([0,2]) 
+        objects = self.generate_objects(number=number, obj_text=obj_text,  obj_type=obj_type)
 
         return self.generate_instance(background_id=background_id, objects=objects)
 
@@ -256,19 +265,17 @@ if __name__ == "__main__":
     obj = AbstractSimple()
 
     for i in range(16):                                                                     
-    #for i in range(1):                                                                     
-        number = np.random.randint(3)+1
-        #im = obj.generate_instance(number=number) 
-        #im = obj.sample_id() 
-        im = obj.sample_od(level_0=False, level_1=False, level_2=False) 
+        im = obj.sample_id() 
+
+        ### Generate image which is on all levels out of distr.
+        #im = obj.sample_od(level_0=True, level_1=True, level_2=True) 
 
         plt.subplot(4, 4, i+1)
         plt.imshow(im,  cmap='Greys_r',  interpolation='nearest')                                        
         plt.xticks([])
         plt.yticks([])   
 
-    print('Done')
     plt.tight_layout()              
-    plt.savefig('test.pdf')
-    #plt.show()
+    plt.savefig('SampleInDistr.pdf')
+    plt.show()
 
