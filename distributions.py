@@ -1,3 +1,6 @@
+'''Supplies the probabaility distribtions that drive the data generation.
+The distributions have both the capability to sample, and evaluate their likelihood at any point.'''
+
 import random
 from functools import reduce
 
@@ -6,8 +9,12 @@ import numpy as np
 def _check_unity(weights, tol=1e-8):
     return abs(np.sum(weights) - 1) < tol
 
-class discrete_multinomial:
+class discrete_choice:
+    '''Weighted random choice between integers or other specified objects'''
     def __init__(self, choices=None, weights=None):
+        '''choices: None or list of objects. If None, uses natural numbers (from 0) as the choices.
+        weights: None or list of floats. Weight of each choice. Must sum to 1.
+            If None, weight all choices equally.'''
 
         if weights is None and choices is None:
             raise ValueError("Set at least one of weights or choices")
@@ -34,8 +41,13 @@ class discrete_multinomial:
         except ValueError:
             return -np.inf
 
-class continuous_multivariate_gaussian:
+class continuous_multivariate_normal:
+    '''Multivariate normal distribution, support for full covariance matrix'''
     def __init__(self, mu, sigma):
+        '''mu: float or n-dim array of floats. the 1D/nD center of the gaussian.
+        sigma: if mu is n-dimensional, one float is interpreted as a diagonal covariance
+            with the same value in each dimension. A n-dim input is interpreted as a diagonal
+            covariance. A full nxn-dim input is used as a full covariance matrix.'''
 
         if isinstance(mu, float):
             mu = [mu]
@@ -62,7 +74,12 @@ class continuous_multivariate_gaussian:
 
 
 class continuous_multivariate_uniform:
+    '''Uniform probabaility in a hyper-cuboid'''
     def __init__(self, x0, delta_x):
+        ''' x0: float or n-dim array of floats. A corner of the cuboid.
+            (in 1D, a float or a 1D array are both permissible)
+        delta_x: float or n-dim array of floats. The extent in each direction.
+            Positive and negative values are permissible.'''
 
         if isinstance(x0, float):
             x0 = [x0]
@@ -89,9 +106,12 @@ class continuous_multivariate_uniform:
         return -np.inf
 
 
-class continuous_mixture:
-
+class mixture:
+    '''Weighted mixture between n other distributions'''
     def __init__(self, distributions, weights=None):
+        '''distributions: list of prob. distrib. objects that constitute the mixture.
+        weights: list or array of float, or None. How much each component is weighted.
+            Must sum to 1. If None, weight all equally.'''
 
         if weights is None:
             weights = [1. / len(distributions)] * len(distributions)
@@ -132,10 +152,10 @@ if __name__=='__main__':
     decaying_weights = np.array([1. / k**2 for k in range(1,8)])
     decaying_weights /= np.sum(decaying_weights)
 
-    gauss    = continuous_multivariate_gaussian
+    gauss    = continuous_multivariate_normal
     uniform  = continuous_multivariate_uniform
-    discrete = discrete_multinomial
-    mix      = continuous_mixture
+    discrete = discrete_choice
+    mix      = mixture
 
     distribs = [
                 'discrete(weights=decaying_weights)',
