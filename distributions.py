@@ -9,7 +9,7 @@ import numpy as np
 def _check_unity(weights, tol=1e-8):
     return abs(np.sum(weights) - 1) < tol
 
-class discrete_choice:
+class DiscreteChoice:
     '''Weighted random choice between integers or other specified objects'''
     def __init__(self, choices=None, weights=None):
         '''choices: None or list of objects. If None, uses natural numbers (from 0) as the choices.
@@ -34,14 +34,14 @@ class discrete_choice:
         x = random.choices(self.choices, self.weights, k=(n or 1))
         return x if n else x[0]
 
-    def log_density(self, x):
+    def log_likelihood(self, x):
         try:
             i = self.choices.index(x)
             return np.log(self.weights[i])
         except ValueError:
             return -np.inf
 
-class continuous_multivariate_normal:
+class ContinuousNormal:
     '''Multivariate normal distribution, support for full covariance matrix'''
     def __init__(self, mu, sigma):
         '''mu: float or n-dim array of floats. the 1D/nD center of the gaussian.
@@ -66,14 +66,14 @@ class continuous_multivariate_normal:
         x = np.random.multivariate_normal(self.mu, self.sigma, size=((n or 1),))
         return x if n else x[0]
 
-    def log_density(self, x):
+    def log_likelihood(self, x):
         d = len(self.mu)
         z = np.array(x) - np.array(self.mu)
         zz = (z @ np.linalg.inv(self.sigma) @ z)
         return -0.5 * (zz + d * np.log(2 * np.pi) + np.log(np.linalg.det(self.sigma)))
 
 
-class continuous_multivariate_uniform:
+class ContinuousUniform:
     '''Uniform probabaility in a hyper-cuboid'''
     def __init__(self, x0, delta_x):
         ''' x0: float or n-dim array of floats. A corner of the cuboid.
@@ -96,7 +96,7 @@ class continuous_multivariate_uniform:
         x = u * self.dx[np.newaxis, :] + self.x0[np.newaxis, :]
         return x if n else x[0]
 
-    def log_density(self, x):
+    def log_likelihood(self, x):
         u = x - self.x0
         u *= np.sign(self.dx)
         in_interval = np.all(u >= 0) and np.all(u < np.abs(self.dx))
@@ -106,7 +106,7 @@ class continuous_multivariate_uniform:
         return -np.inf
 
 
-class mixture:
+class Mixture:
     '''Weighted mixture between n other distributions'''
     def __init__(self, distributions, weights=None):
         '''distributions: list of prob. distrib. objects that constitute the mixture.
@@ -137,8 +137,8 @@ class mixture:
 
         return x if n else x[0]
 
-    def log_density(self, x):
-        log_pj = [np.log(w) + d.log_density(x) for w,d in zip(self.weights, self.distributions)]
+    def log_likelihood(self, x):
+        log_pj = [np.log(w) + d.log_likelihood(x) for w,d in zip(self.weights, self.distributions)]
         return reduce(np.logaddexp, log_pj)
 
 
@@ -152,10 +152,10 @@ if __name__=='__main__':
     decaying_weights = np.array([1. / k**2 for k in range(1,8)])
     decaying_weights /= np.sum(decaying_weights)
 
-    gauss    = continuous_multivariate_normal
-    uniform  = continuous_multivariate_uniform
-    discrete = discrete_choice
-    mix      = mixture
+    gauss    = ContinuousNormal
+    uniform  = ContinuousUniform
+    discrete = DiscreteChoice
+    mix      = Mixture
 
     distribs = [
                 'discrete(weights=decaying_weights)',
@@ -179,7 +179,7 @@ if __name__=='__main__':
 
         dist = eval(d)
         samples = dist.sample(n=64_000)
-        likelihoods = np.array([dist.log_density(x) for x in plot_axis])
+        likelihoods = np.array([dist.log_likelihood(x) for x in plot_axis])
         likelihoods = np.exp(likelihoods)
 
         plt.plot(plot_axis, likelihoods, '--', color='crimson')
