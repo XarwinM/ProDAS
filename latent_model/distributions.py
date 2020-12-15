@@ -6,10 +6,20 @@ from functools import reduce
 
 import numpy as np
 
+
 def _check_unity(weights, tol=1e-8):
     return abs(np.sum(weights) - 1) < tol
 
-class DiscreteChoice:
+
+class Distribution:
+    def sample(self, n=None):
+        return [0] * n if n else 0
+
+    def log_likelihood(self, x):
+        return -np.inf
+
+
+class DiscreteChoice(Distribution):
     '''Weighted random choice between integers or other specified objects'''
     def __init__(self, choices=None, weights=None):
         '''choices: None or list of objects. If None, uses natural numbers (from 0) as the choices.
@@ -41,7 +51,8 @@ class DiscreteChoice:
         except ValueError:
             return -np.inf
 
-class ContinuousNormal:
+
+class ContinuousNormal(Distribution):
     '''Multivariate normal distribution, support for full covariance matrix'''
     def __init__(self, mu, sigma):
         '''mu: float or n-dim array of floats. the 1D/nD center of the gaussian.
@@ -73,7 +84,7 @@ class ContinuousNormal:
         return -0.5 * (zz + d * np.log(2 * np.pi) + np.log(np.linalg.det(self.sigma)))
 
 
-class ContinuousUniform:
+class ContinuousUniform(Distribution):
     '''Uniform probabaility in a hyper-cuboid'''
     def __init__(self, x0, delta_x):
         ''' x0: float or n-dim array of floats. A corner of the cuboid.
@@ -92,7 +103,7 @@ class ContinuousUniform:
         self.x0 = np.array(x0)
 
     def sample(self, n=None):
-        u = np.random.random(size=((n or 1),len(self.x0)))
+        u = np.random.random(size=((n or 1), len(self.x0)))
         x = u * self.dx[np.newaxis, :] + self.x0[np.newaxis, :]
         return x if n else x[0]
 
@@ -106,7 +117,7 @@ class ContinuousUniform:
         return -np.inf
 
 
-class Mixture:
+class Mixture(Distribution):
     '''Weighted mixture between n other distributions'''
     def __init__(self, distributions, weights=None):
         '''distributions: list of prob. distrib. objects that constitute the mixture.
@@ -138,18 +149,17 @@ class Mixture:
         return x if n else x[0]
 
     def log_likelihood(self, x):
-        log_pj = [np.log(w) + d.log_likelihood(x) for w,d in zip(self.weights, self.distributions)]
+        log_pj = [np.log(w) + d.log_likelihood(x) for w, d in zip(self.weights, self.distributions)]
         return reduce(np.logaddexp, log_pj)
 
 
-if __name__=='__main__':
-
+if __name__ == '__main__':
 
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
-    decaying_weights = np.array([1. / k**2 for k in range(1,8)])
+    decaying_weights = np.array([1. / k**2 for k in range(1, 8)])
     decaying_weights /= np.sum(decaying_weights)
 
     gauss    = ContinuousNormal
@@ -157,14 +167,12 @@ if __name__=='__main__':
     discrete = DiscreteChoice
     mix      = Mixture
 
-    distribs = [
-                'discrete(weights=decaying_weights)',
+    distribs = ['discrete(weights=decaying_weights)',
                 'discrete(choices=[1.1, 1.5, 4.6, 5.9])',
                 'gauss(5.0, 3.0)',
                 'uniform([6], [2])',
                 'mix([gauss(7., 2.), uniform(2.5, 3.)], weights=[0.7, 0.3])',
-                'mix([uniform(5., 3.), uniform(5., -1.5)])'
-            ]
+                'mix([uniform(5., 3.), uniform(5., -1.5)])']
 
     plot_w = 3
     plot_h = len(distribs) // plot_w + (1 if (len(distribs) % plot_w) else 0)
@@ -172,10 +180,9 @@ if __name__=='__main__':
     plot_range = (0, 10)
     plot_axis = np.linspace(*plot_range, num=1000, endpoint=False)
 
-    plt.figure(figsize=(4*plot_w, 3*plot_h))
-
+    plt.figure(figsize=(4 * plot_w, 3 * plot_h))
     for i, d in enumerate(distribs):
-        plt.subplot(plot_h, plot_w, i+1)
+        plt.subplot(plot_h, plot_w, i + 1)
 
         dist = eval(d)
         samples = dist.sample(n=64_000)
