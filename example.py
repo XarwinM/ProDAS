@@ -15,13 +15,13 @@ c4 = np.array((255, 154,  20), dtype=np.float) / 255.
 
 model = BaseGenerator(render,
 
-                      fg_color_1      = ds.ContinuousNormal(c1, 0.03),
-                      fg_color_2      = ds.ContinuousNormal(c2, 0.03),
+                      fg_color_1      = ds.ContinuousNormal(c1, 0.02),
+                      fg_color_2      = ds.ContinuousNormal(c2, 0.02),
                       fg_texture      = ds.DiscreteChoice([0,1]),
 
-                      bg_color_1      = ds.ContinuousNormal(c3, 0.03),
-                      bg_color_2      = ds.ContinuousNormal(c4, 0.03),
-                      bg_texture      = ds.DiscreteChoice([2,3]),
+                      bg_color_1      = ds.ContinuousNormal(c3, 0.02),
+                      bg_color_2      = ds.ContinuousNormal(c4, 0.02),
+                      bg_texture      = ds.DiscreteChoice([2,4]),
 
                       object_size     = ds.ContinuousUniform(0.15, 0.15),
                       object_shape    = ds.DiscreteChoice(['circle', 'square']),
@@ -33,10 +33,10 @@ model = BaseGenerator(render,
 model.set_distribution('in_distribution', inherit_from='default')
 
 model.set_distribution('ood_color', inherit_from='default',
-                       fg_color_1 = ds.ContinuousNormal(c3, 0.05),
-                       fg_color_2 = ds.ContinuousNormal(c4, 0.05),
-                       bg_color_1 = ds.ContinuousNormal(c1, 0.05),
-                       bg_color_2 = ds.ContinuousNormal(c2, 0.05)
+                       fg_color_1 = ds.ContinuousNormal(c3, 0.02),
+                       fg_color_2 = ds.ContinuousNormal(c4, 0.02),
+                       bg_color_1 = ds.ContinuousNormal(c1, 0.02),
+                       bg_color_2 = ds.ContinuousNormal(c2, 0.02)
                        )
 
 model.set_distribution('ood_texture', inherit_from='default',
