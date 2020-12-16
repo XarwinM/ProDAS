@@ -2,6 +2,7 @@ from .perlin_noise import SimplexNoise
 
 from multiprocessing import Pool
 from glob import glob
+import random
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -48,18 +49,62 @@ def render(seed = None,
 
            ):
 
+    # two different perlin noise sources
     texture_noise = SimplexNoise(period=1024, seed=seed)
     hsv_noise = SimplexNoise(period=1024, seed=(seed + 1 if seed else seed))
 
     im = np.zeros((IMSIZE, IMSIZE, 3))
-    fg_texture_mask = np.zeros((IMSIZE, IMSIZE))
-    bg_texture_mask = np.zeros((IMSIZE, IMSIZE))
 
+    # for antialiasing, render the shapes at a larger size
     aa_size = ANTIALIASING * IMSIZE
     fg_mask = np.zeros((aa_size, aa_size))
-    fg_mask_indeces = draw.circle(object_position[0] * aa_size,
-                                  object_position[1] * aa_size,
-                                  0.5 * object_size * aa_size)
+
+    if object_shape == 'circle':
+        fg_mask_indeces = draw.circle(object_position[0] * aa_size,
+                                      object_position[1] * aa_size,
+                                      0.5 * object_size * aa_size)
+    else:
+
+        if object_shape == 'square':
+            vertices = np.array([ (-0.5, -0.5),
+                                  (-0.5,  0.5),
+                                  ( 0.5,  0.5),
+                                  ( 0.5, -0.5) ])
+            # make it so the area is the same as the circle
+            # for the same 'object_size' argument
+            vertices *= 0.886
+
+        elif object_shape == 'triangle':
+
+            vertices = np.array([ ( 0., np.sqrt(3)),
+                                  (-2,  -np.sqrt(3)),
+                                  ( 2,  -np.sqrt(3)) ])
+
+            # make it so the area is the same as the circle
+            # for the same 'object_size' argument
+            vertices *= 0.25 * 1.347
+
+        else:
+            raise ValueError("Shape must be 'square', 'circle' or 'triangle'")
+
+        alpha = 2. * np.pi * object_rotation
+        rot_matrix = np.array([ (np.cos(alpha), -np.sin(alpha)),
+                                (np.sin(alpha),  np.cos(alpha)) ])
+
+        vertices = vertices @ rot_matrix.T
+        vertices *= object_size
+        vertices += np.array([object_position])
+        vertices *= aa_size
+
+        fg_mask_indeces = draw.polygon(vertices[:,0], vertices[:,1])
+
+    fg_mask_indeces = np.array(fg_mask_indeces)
+
+    # kick out the indexes that go over the image boundary
+    valid_indexes = np.logical_and(fg_mask_indeces >= 0, fg_mask_indeces < aa_size)
+    valid_indexes = np.logical_and(valid_indexes[0], valid_indexes[1])
+
+    fg_mask_indeces = fg_mask_indeces[:, valid_indexes]
 
     fg_mask[fg_mask_indeces[0], fg_mask_indeces[1]] = 1.
     fg_mask = transform.resize(fg_mask, (IMSIZE, IMSIZE), order=3)
@@ -75,8 +120,15 @@ def render(seed = None,
 
             pre_blend = np.zeros((2, 3))
 
+            # the loop renders the background and the foreground separately
             for l in range(2):
-                tex = textures[l][(i + texture_offset[l]) % 16, (j + texture_offset[l]) % 16]
+
+                # skip this pixel for fore/background if it is not visible
+                if abs(fg_mask[i, j] + l - 1) < 1e-8:
+                    continue
+
+                # find the texture pixel and add effects
+                tex = textures[l][(i + texture_offset[l][0]) % 16, (j + texture_offset[l][1]) % 16]
                 tex = texture_contrast * (tex - 0.5)
                 tex *= 1 + texture_noise_strength * texture_noise.noise2(i * texture_noise_scale,
                                                                          j * texture_noise_scale)
@@ -85,6 +137,7 @@ def render(seed = None,
                 rgb_vec = tex * color_1[l] + (1. - tex) * color_2[l]
                 hsv_vec = colors.rgb_to_hsv(rgb_vec)
 
+                # add the hsv perlin noise
                 for k in range(3):
                     hsv_vec[k] += (hsv_noise_strength[k]
                                    * hsv_noise.noise3(i * hsv_noise_scale,
@@ -94,6 +147,7 @@ def render(seed = None,
                 rgb_vec = colors.hsv_to_rgb(np.clip(hsv_vec, 0, 1))
                 pre_blend[l] = rgb_vec
 
+            # combine the fore- and background
             blend = pre_blend[1] * fg_mask[i,j] + pre_blend[0] * (1 - fg_mask[i,j])
 
             im[i, j] = blend
@@ -102,16 +156,16 @@ def render(seed = None,
     im = np.clip(im, 0, 1)
     return im
 
-
-
 def render_wrap(arg):
-    np.random.seed(None)
+    # just a wrapper for the vizualization
+    # (has to be outside of __main__ clause due to multiprocessing)
 
+    np.random.seed(None)
     random_colors = []
     for k in range(4):
-        h = np.random.rand()
-        s = 0.5 + 0.5 * np.random.rand()
-        v = 0.3 + 0.7 * np.random.rand()
+        h = random.random()
+        s = 0.5 + 0.5 * random.random()
+        v = 0.3 + 0.7 * random.random()
         random_colors.append(colors.hsv_to_rgb((h, s, v)))
 
     return render(
@@ -120,7 +174,9 @@ def render_wrap(arg):
                     fg_color_1 = random_colors[2],
                     fg_color_2 = random_colors[3],
                     object_position = 0.4 + 0.2 * np.random.rand(2),
-                    object_size = 0.2 + 0.6 * np.random.rand(),
+                    object_size = 0.2 + 0.4 * random.random(),
+                    object_shape = random.choice(['circle', 'square', 'triangle']),
+                    object_rotation = random.random(),
                     bg_texture = np.random.randint(7),
                     fg_texture = np.random.randint(7),
                     bg_texture_offset = np.random.randint(15),

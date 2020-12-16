@@ -64,7 +64,7 @@ class ContinuousNormal(Distribution):
             mu = [mu]
 
         if isinstance(sigma, float):
-            self.sigma = np.eye(len(mu))
+            self.sigma = sigma * np.eye(len(mu))
         # 1d convariance should be used as diagonal:
         elif isinstance(sigma[0], float):
             self.sigma = np.diag(sigma)
@@ -74,7 +74,7 @@ class ContinuousNormal(Distribution):
         self.mu = np.array(mu)
 
     def sample(self, n=None):
-        x = np.random.multivariate_normal(self.mu, self.sigma, size=((n or 1),))
+        x = np.random.multivariate_normal(self.mu, self.sigma, size=((n or 1),)).squeeze()
         return x if n else x[0]
 
     def log_likelihood(self, x):
@@ -105,6 +105,7 @@ class ContinuousUniform(Distribution):
     def sample(self, n=None):
         u = np.random.random(size=((n or 1), len(self.x0)))
         x = u * self.dx[np.newaxis, :] + self.x0[np.newaxis, :]
+        x = x.squeeze()
         return x if n else x[0]
 
     def log_likelihood(self, x):
