@@ -36,35 +36,38 @@ ToDos
 Usage
 #########
 
-For an example on how to use a pre-defined latent model in combination with one of our rendering functions see [example.py](example.py). The basic structure is as follows
+For an example on how to use a pre-defined latent model in combination with one of our rendering functions see `example.py`_. The basic structure is as follows::
 
-```python
-from latent_model import BaseGenerator
-import latent_model.distributions as ds
+    from latent_model import BaseGenerator
+    import latent_model.distributions as ds
 
-c1 = np.array((66,  221, 237), dtype=np.float) / 255.
-model = BaseGenerator(renderer,
-    fg_color_1 = ds.ContinuousNormal(c1,0.02)
-    ...
-    )
-model.set_distribution('in_distribution', inherit_from='default')
-```
-The `BaseGenerator` is the starting point in the data generating process. It takes as input the `renderer` and arguments that are specific to the `renderer` like `fg_color_1`. For each argument, we define a distribution that determines the distribution of the argument, in this case the distribution `fg_color_1`. In [latent_model/distributions.py](latent_model/distributions.py) we offer several predefined distributions. 
+    c1 = np.array((66,  221, 237), dtype=np.float) / 255.
+    model = BaseGenerator(renderer,
+        fg_color_1 = ds.ContinuousNormal(c1,0.02)
+        ...
+        )
+    model.set_distribution('in_distribution', inherit_from='default')
 
-The user can customize the data generating process at two parts: (1) the latent model and (2) the renderer.
+.. _example.py: example.py
 
-The latent model can be customized and defined in [latent_model/distributions.py](latent_model/distributions.py). A new distribution is a class that has the two methods, namely `sample` and `log_likelihood` as for instance in:
+The ``BaseGenerator`` is the starting point in the data generating process. It takes as input the ``renderer`` and arguments that are specific to the ``renderer`` like ``fg_color_1``. For each argument, we define a distribution that determines the distribution of the argument, in this case the distribution ``fg_color_1``. In `latent_model/distributions.py`_ we offer several predefined distributions. 
 
-```python
-class Distribution:
-    def sample(self, n=None):
-        return [0] * n if n else 0
+The user can customize the data generating process by changing: (1) the *latent model* or (2) the *renderer*.
 
-    def log_likelihood(self, x):
-        return -np.inf
-```
+The latent model can be customized and defined in `latent_model/distributions.py`_. A new distribution is a class that has two methods, namely ``sample`` and ``log_likelihood`` as for instance in::
 
-The generated samples can be easily cast into a pytorch dataloader as shown in [dataloader.py](dataloader.py).
+    class Distribution:
+        def sample(self, n=None):
+            return [0] * n if n else 0
+
+        def log_likelihood(self, x):
+            return -np.inf
+
+.. _latent_model/distributions.py: latent_model/distributions.py
+
+The generated samples can be easily cast into a pytorch dataloader as shown in `dataloader.py`_.
+
+.. _dataloader.py: dataloader.py
 
 (How the renderer can be customized will be described)
 
