@@ -50,7 +50,7 @@ For an example on how to use a pre-defined latent model in combination with one 
 
 .. _example.py: example.py
 
-The ``BaseGenerator`` is the starting point in the data generating process. It takes as input the ``renderer`` and arguments that are specific to the ``renderer`` like ``fg_color_1``. For each argument, we define a distribution that determines the distribution of the argument - in this case ``fg_color_1`` follows certain a normal distribution. In `latent_model/distributions.py`_ we offer several predefined distributions. With ``model.set_distribution(name,inherit_from='default')`` we set on a latent model that inherits the distribution from the ``model`` as defined above and can be called using ``name``. We can define several different latent models like that. For instance::
+The ``BaseGenerator`` is the starting point in the data generating process. It takes as input the ``renderer`` and arguments that are specific to the ``renderer`` like ``fg_color_1``. For each argument, we define a distribution that determines the distribution of the argument - in this case ``fg_color_1`` follows certain a normal distribution. In `latent_model/distributions.py`_ we offer several predefined distributions. With ``model.set_distribution(name, inherit_from='default')`` we set on a latent model that inherits the distribution from the ``model`` as defined above and can be called using ``name``. We can define several different latent models like that. For instance::
 
     model.set_distribution('ood_shape', inherit_from='default',
         object_shape    = ds.DiscreteChoice(['triangle'])
@@ -85,7 +85,7 @@ Example
 #########
 
 The script `example.py` shows how to define a model with a default distribution (in-distribution)
-and several other distributions that differ in various ways (out-of-distribon, OoD).
+and several other distributions that differ in various ways (out-of-distribution, OoD).
 
 .. image:: example_figures/in_distribution.jpg
             :width: 800px
