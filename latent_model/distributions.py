@@ -60,13 +60,12 @@ class ContinuousNormal(Distribution):
             with the same value in each dimension. A n-dim input is interpreted as a diagonal
             covariance. A full nxn-dim input is used as a full covariance matrix.'''
 
-        if isinstance(mu, float):
+        if isinstance(mu, (int, float)):
             mu = [mu]
-
-        if isinstance(sigma, float):
+        if isinstance(sigma, (int, float)):
             self.sigma = sigma * np.eye(len(mu))
         # 1d convariance should be used as diagonal:
-        elif isinstance(sigma[0], float):
+        elif isinstance(sigma[0], (int, float)):
             self.sigma = np.diag(sigma)
         else:
             self.sigma = sigma
@@ -74,7 +73,7 @@ class ContinuousNormal(Distribution):
         self.mu = np.array(mu)
 
     def sample(self, n=None):
-        x = np.random.multivariate_normal(self.mu, self.sigma, size=((n or 1),)).squeeze()
+        x = np.random.multivariate_normal(self.mu, self.sigma, size=((n or 1))).squeeze()
         return x if n else x[0]
 
     def log_likelihood(self, x):
@@ -92,10 +91,10 @@ class ContinuousUniform(Distribution):
         delta_x: float or n-dim array of floats. The extent in each direction.
             Positive and negative values are permissible.'''
 
-        if isinstance(x0, float):
+        if isinstance(x0, (int, float)):
             x0 = [x0]
 
-        if isinstance(delta_x, float):
+        if isinstance(delta_x, (int, float)):
             self.dx = np.array([delta_x] * len(x0))
         else:
             self.dx = np.array(delta_x)

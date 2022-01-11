@@ -70,7 +70,7 @@ class BaseGenerator:
 
         return log_p
 
-    def sample(self, n=None, distribution='default'):
+    def sample(self, n=None, distribution='default', **kwargs):
         '''
         Sample parameters from the model of latent factors.
         Arguments:
@@ -79,6 +79,8 @@ class BaseGenerator:
             (as opposed to a list with only one entry, for n=1)
         distribution (optional, string):
             Which latent distribution to sample from. Uses 'default' by default.
+        kwargs (optional, keyword arguments):
+            The keyword arguments to the renderer.
         Returns:
         list of tuples of the form (render output, used kwargs),
         or the tuple directly for n=None
@@ -90,6 +92,6 @@ class BaseGenerator:
 
         for k in range(n or 1):
             input_properties_k = {p: v[k] for p, v in sampled_input_properties.items()}
-            outputs.append((self.renderer(**input_properties_k), input_properties_k))
+            outputs.append((self.renderer(**{**input_properties_k, **kwargs}), input_properties_k))
 
         return (outputs if n else outputs[0])
